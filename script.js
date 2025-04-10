@@ -3,15 +3,60 @@ const sendButton = document.getElementById('send-button');
 const voiceButton = document.getElementById('voice-button');
 const outputDiv = document.getElementById('output');
 const liveCam = document.getElementById('live-cam');
+const voiceOutputToggle = document.getElementById('voice-output-toggle'); // Get the checkbox
 
-const OPENROUTER_API_KEY = "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";
+// Use the correct API Key and Vision Model
+const OPENROUTER_API_KEY = "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";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
-// Switch to a multimodal model that supports vision
 const MODEL_NAME = "google/gemini-pro-vision";
 
 let recognition;
 let isRecognizing = false;
 let conversationHistory = []; // To store the chat history
+const synth = window.speechSynthesis; // Speech Synthesis API
+let voices = []; // To store available voices
+
+// --- Speech Synthesis ---
+function populateVoiceList() {
+  if(typeof synth === 'undefined') {
+    console.warn("Speech Synthesis not supported.");
+    return;
+  }
+  voices = synth.getVoices();
+  // console.log("Available voices:", voices);
+}
+
+// Call populateVoiceList when voices change or initially
+populateVoiceList();
+if (typeof synth !== 'undefined' && synth.onvoiceschanged !== undefined) {
+  synth.onvoiceschanged = populateVoiceList;
+}
+
+function speakText(textToSpeak) {
+    if (!synth) {
+        return; // Already warned in populateVoiceList
+    }
+    // Optional: Cancel previous speech if interrupting is desired
+    // if (synth.speaking) {
+    //    synth.cancel();
+    // }
+    if (synth.speaking) {
+         console.warn('SpeechSynthesis is already speaking.');
+         return; // Don't interrupt
+    }
+    if (textToSpeak && textToSpeak.trim() !== '') {
+        const utterThis = new SpeechSynthesisUtterance(textToSpeak);
+        utterThis.onerror = (event) => {
+            console.error('SpeechSynthesisUtterance.onerror', event);
+        };
+        // Optional: Select a specific voice
+        // const selectedVoice = voices.find(voice => voice.lang === 'en-US'); // Example
+        // if (selectedVoice) {
+        //     utterThis.voice = selectedVoice;
+        // }
+        synth.speak(utterThis);
+    }
+}
 
 // --- Display Messages ---
 function displayMessage(message, sender) {
@@ -24,6 +69,11 @@ function displayMessage(message, sender) {
 
 // --- Capture Video Frame ---
 function captureVideoFrame() {
+    // Check if camera is ready and has dimensions
+    if (!liveCam || !liveCam.videoWidth || !liveCam.videoHeight) {
+        console.warn("Camera not ready or video dimensions unavailable.");
+        return null;
+    }
     const canvas = document.createElement('canvas');
     canvas.width = liveCam.videoWidth;
     canvas.height = liveCam.videoHeight;
@@ -88,13 +138,17 @@ async function sendMessageToAI(message, imageDataUrl = null) {
 
         const data = await response.json();
         if (data.choices && data.choices.length > 0 && data.choices[0].message?.content) {
-             const aiResponse = data.choices[0].message.content;
-             displayMessage(aiResponse, 'ai');
-             // Add AI text response to history
-             conversationHistory.push({ role: "assistant", content: aiResponse });
+            const aiResponse = data.choices[0].message.content;
+            displayMessage(aiResponse, 'ai');
+            conversationHistory.push({ role: "assistant", content: aiResponse }); // Add AI response to history
+
+            // Speak the response if the toggle is checked
+            if (voiceOutputToggle.checked) {
+                speakText(aiResponse);
+            }
         } else {
-             console.warn("AI response format unexpected or empty:", data);
-             displayMessage("AI did not return a valid response.", 'ai');
+            console.warn("AI response format unexpected or empty:", data);
+            displayMessage("AI did not return a valid response.", 'ai');
              // Remove the last user message from history if AI fails
             conversationHistory.pop();
         }
@@ -112,7 +166,7 @@ async function sendMessageToAI(message, imageDataUrl = null) {
 sendButton.addEventListener('click', () => {
     const message = textInput.value.trim();
     if (message) {
-        sendMessageToAI(message);
+        sendMessageToAI(message); // Send only text for text input
         textInput.value = '';
     }
 });
@@ -148,7 +202,9 @@ function setupSpeechRecognition() {
         let imageData = null;
         try {
             imageData = captureVideoFrame();
-            console.log("Captured video frame.");
+            if (imageData) {
+                 console.log("Captured video frame.");
+            }
         } catch (error) {
             console.error("Error capturing video frame:", error);
             displayMessage("Error capturing video frame.", 'ai');
@@ -188,6 +244,10 @@ voiceButton.addEventListener('click', () => {
         recognition.stop();
     } else {
         try {
+            // Stop any ongoing speech synthesis before starting recognition
+            if (synth && synth.speaking) {
+                synth.cancel();
+            }
             recognition.start();
         } catch (error) {
             console.error("Error starting recognition:", error);
@@ -208,21 +268,15 @@ async function setupCamera() {
             liveCam.onloadedmetadata = () => {
                 liveCam.play();
                 console.log("Camera stream started.");
-                // TODO: Add functionality to send camera frames to AI if needed
-                // This requires more complex handling (e.g., capturing frames, sending as base64)
-                // and depends on the AI model's capabilities (vision models).
-                // For this prototype, we just display the feed.
             };
         } catch (error) {
             console.error("Error accessing camera:", error);
             alert("Could not access camera. Please ensure permission is granted.");
-            // Display error in media container?
             const mediaContainer = document.getElementById('media-container');
             const errorMsg = document.createElement('p');
             errorMsg.textContent = `Camera Error: ${error.name} - ${error.message}`;
             errorMsg.style.color = 'red';
             mediaContainer.appendChild(errorMsg);
-
         }
     } else {
         console.warn("getUserMedia not supported in this browser.");
@@ -234,6 +288,8 @@ async function setupCamera() {
 document.addEventListener('DOMContentLoaded', () => {
     setupSpeechRecognition();
     setupCamera();
-    displayMessage("Hello! How can I help you today?", 'ai'); // Initial AI message
-    conversationHistory.push({ role: "assistant", content: "Hello! How can I help you today?" });
+    const initialMessage = "Hello! How can I help you today?";
+    displayMessage(initialMessage, 'ai'); // Display initial message
+    conversationHistory.push({ role: "assistant", content: initialMessage });
+    // Do not speak initial message automatically
 });
