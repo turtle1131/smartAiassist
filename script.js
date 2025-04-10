@@ -4,7 +4,7 @@ const voiceButton = document.getElementById('voice-button');
 const outputDiv = document.getElementById('output');
 const liveCam = document.getElementById('live-cam');
 
-const OPENROUTER_API_KEY = "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";
+const OPENROUTER_API_KEY = "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";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 // Switch to a multimodal model that supports vision
 const MODEL_NAME = "google/gemini-pro-vision";
