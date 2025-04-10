@@ -13,9 +13,10 @@ h1 {
 
 #interaction-container {
     display: flex;
+    flex-direction: column; /* Vertical layout */
     gap: 20px;
-    width: 80%;
-    max-width: 1000px;
+    width: 90%;
+    max-width: 700px;
     margin-top: 20px;
 }
 
@@ -27,7 +28,7 @@ h1 {
     padding: 15px;
     background-color: #fff;
     border-radius: 5px;
-    height: 400px; /* Fixed height for chat box */
+    min-height: 300px;
 }
 
 #output {
@@ -37,27 +38,38 @@ h1 {
     margin-bottom: 10px;
     padding: 10px;
     background-color: #f9f9f9;
-    min-height: 200px; /* Minimum height */
+    min-height: 200px;
+    display: flex; /* Use flexbox */
+    flex-direction: column; /* Stack items vertically */
+    gap: 5px; /* Space between messages */
 }
 
 #output p {
-    margin: 5px 0;
+    /* General paragraph styling for messages */
     padding: 8px;
     border-radius: 4px;
+    box-sizing: border-box;
+    max-width: 70%; /* Limit bubble width */
+    /* Remove margin-bottom, use gap from parent */
 }
 
 .user-message {
     background-color: #e1f5fe;
-    text-align: right;
-    margin-left: auto;
-    max-width: 70%;
+    text-align: left; /* Align text within the bubble */
+    align-self: flex-end; /* Align the bubble itself to the right */
 }
 
 .ai-message {
     background-color: #f0f0f0;
-    text-align: left;
-    margin-right: auto;
-    max-width: 70%;
+    text-align: left; /* Align text within the bubble */
+    align-self: flex-start; /* Align the bubble itself to the left */
+}
+
+.thinking {
+    font-style: italic;
+    color: #888;
+    background-color: #f9f9f9; /* Match output background */
+    align-self: flex-start; /* Align thinking message left */
 }
 
 
@@ -66,7 +78,7 @@ h1 {
     border: 1px solid #ccc;
     border-radius: 3px;
     margin-right: 5px;
-    flex-grow: 1; /* Allow input to grow */
+    flex-grow: 1;
 }
 
 #chat-box > div:last-of-type { /* Target the div containing input and buttons */
@@ -82,7 +94,7 @@ button {
     color: white;
     border-radius: 3px;
     cursor: pointer;
-    margin-left: 5px; /* Add some space between buttons */
+    margin-left: 5px;
 }
 
 button:hover {
@@ -112,5 +124,5 @@ button:hover {
     width: 100%;
     max-width: 400px;
     border: 1px solid #ddd;
-    background-color: #000; /* Placeholder background */
+    background-color: #000;
 }
